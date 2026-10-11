@@ -1,0 +1,29 @@
+{
+ "duration": 30.3,
+ "steps": [
+  {
+   "key": "supa",
+   "start": 0.0,
+   "end": 8.3,
+   "hold": 1.8
+  },
+  {
+   "key": "gcp",
+   "start": 8.3,
+   "end": 16.4,
+   "hold": 1.8
+  },
+  {
+   "key": "gotcha",
+   "start": 16.4,
+   "end": 21.8,
+   "hold": 1.8
+  },
+  {
+   "key": "why",
+   "start": 21.8,
+   "end": 30.3,
+   "hold": 2.2
+  }
+ ]
+}

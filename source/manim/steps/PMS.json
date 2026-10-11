@@ -1,0 +1,29 @@
+{
+ "duration": 30.5,
+ "steps": [
+  {
+   "key": "retry",
+   "start": 0.0,
+   "end": 8.5,
+   "hold": 1.8
+  },
+  {
+   "key": "idem",
+   "start": 8.5,
+   "end": 17.1,
+   "hold": 1.8
+  },
+  {
+   "key": "tenant",
+   "start": 17.1,
+   "end": 23.2,
+   "hold": 1.8
+  },
+  {
+   "key": "fallback",
+   "start": 23.2,
+   "end": 30.5,
+   "hold": 2.2
+  }
+ ]
+}

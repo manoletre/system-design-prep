@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dodo prep 1 · DB migration, voice agents, LiveKit</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<style>
+:root{--bg:#0e1117;--card:#151a23;--card2:#1b212d;--fg:#e6e6e6;--muted:#8b93a7;--line:#262d3a;
+--pi:#b392f0;--old:#e08fd0;--y:#7aa2f7;--x:#5fc9b6;--R:#9ece6a;--b:#c3e88d;--rho:#ff9e64;--eps:#f7768e;--al:#e0af68;--st:#a9b1d6;--good:#9ece6a;--bad:#f7768e;--ent:#7dcfff}
+*{box-sizing:border-box}html{color-scheme:dark;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16.5px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:0 22px}
+header{padding:30px 0 10px}
+.back{color:var(--muted);text-decoration:none;font-size:14px}.back:hover{color:var(--fg)}
+h1{font-size:30px;margin:8px 0 4px;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0 0 18px}
+.hook{background:linear-gradient(135deg,#1d1830,#14202a);border:1px solid #2f2a4a;border-radius:14px;padding:16px 20px;margin:0 0 16px}
+.hook .lbl{color:var(--al);font-weight:700}
+.key{display:flex;flex-wrap:wrap;gap:8px;font-size:13.5px;margin:6px 0}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:1px 10px;cursor:help}
+.howto{color:var(--muted);font-size:14px;margin:8px 0 0}
+kbd{background:var(--card2);border:1px solid #33405a;border-bottom-width:2px;border-radius:5px;padding:0 6px;font-size:12.5px;color:var(--fg)}
+#prog{position:sticky;top:0;z-index:20;background:rgba(14,17,23,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+#prog .wrap{display:flex;gap:8px;align-items:center;padding-top:9px;padding-bottom:9px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px 3px 4px;font-size:13px;cursor:pointer;color:var(--muted)}
+.pill .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--card2);color:var(--fg);font-size:12px;font-weight:700}
+.pill.on{border-color:#5b4f93;color:var(--fg)}.pill.on .n{background:#5b4f93}
+.pill.done .n{background:#2f4a26;color:var(--good)}
+.segs{display:flex;gap:2px}.segs i{width:8px;height:5px;border-radius:2px;background:#2a3140}.segs i.d{background:var(--good)}
+.speed{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:13px;color:var(--muted)}
+button{font:inherit;font-size:14px;border:1px solid #33405a;background:var(--card2);color:var(--fg);padding:5px 12px;border-radius:8px;cursor:pointer}
+button:hover{border-color:#5a6b90}button.on,button.primary{background:#3b3360;border-color:#5b4f93}
+.speed button{padding:2px 8px;font-size:12.5px}
+section.chapter{border-top:1px solid var(--line);padding:30px 0 24px;scroll-margin-top:var(--navh,48px)}
+section.chapter h2{font-size:22px;margin:0 0 14px}section.chapter h2 .cn{color:var(--muted);font-weight:500;margin-right:8px}
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:22px;align-items:start}
+.sticky{position:sticky;top:calc(var(--navh,48px) + 10px)}
+video{width:100%;display:block;border-radius:12px;border:1px solid var(--line);background:#000;cursor:pointer}
+.vbar{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.vbar .status{font-size:13.5px;color:var(--muted);margin-left:auto}
+.segbar{height:4px;background:#232a37;border-radius:3px;margin-top:8px;overflow:hidden}.segbar i{display:block;height:100%;width:0;background:var(--al)}
+ol.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+ol.steps li{border:1px solid var(--line);background:var(--card);border-radius:12px;margin:0 0 10px;cursor:pointer;transition:border-color .2s,background .2s}
+ol.steps li:hover{border-color:#3a4560}
+ol.steps li.active{border-color:var(--al);background:#1a1f2b}
+.sh{display:flex;gap:10px;align-items:center;padding:10px 14px}
+.sh .num{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--card2);font-weight:700;font-size:13px}
+li.active .sh .num{background:var(--al);color:#141414}li.done .sh .num{background:#2f4a26;color:var(--good)}
+.sh .t{font-weight:600}.sh .d{margin-left:auto;font-size:12px;color:#5d6577;font-variant-numeric:tabular-nums}
+.sb{display:none;padding:0 14px 12px 50px;color:#cfd3dc;font-size:15px}
+li.active .sb{display:block}
+.sb .katex-display{margin:.5em 0;overflow-x:auto;overflow-y:hidden}
+.katex{color:var(--fg)}
+.qa{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:16px 0}
+.qa .q{font-weight:600;margin-bottom:8px}.qa .q .tag{color:var(--al)}
+textarea{width:100%;min-height:70px;resize:vertical;background:#0f131b;color:var(--fg);border:1px solid #33405a;border-radius:8px;padding:9px 11px;font:inherit;font-size:15px}
+textarea:focus{outline:none;border-color:#6a5cb0}
+.qa .row{display:flex;gap:10px;align-items:center;margin-top:8px}.saved{font-size:12.5px;color:var(--muted)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.compare>div{border-radius:10px;padding:10px 12px;font-size:14.5px}
+.compare .mine{background:#1c1a2b;border:1px solid #352f55}.compare .model{background:#18231a;border:1px solid #2c3d24}
+.compare h5{margin:0 0 4px;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.compare .mine p{white-space:pre-wrap;margin:0}.compare .mine p.empty{color:var(--muted);font-style:italic}
+.compare .model p{margin:0}
+.rate{grid-column:1/-1;display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted)}
+.rate button{padding:2px 10px;font-size:13px}.rate button.on.g{background:#2f4a26;border-color:#4b7a3c}.rate button.on.p{background:#4a3f1f;border-color:#7a6430}.rate button.on.m{background:#4a1f27;border-color:#7a3040}
+.sym{cursor:help;border-radius:3px}.sym.hl{background:rgba(224,175,104,.25)}
+.k-pi,.k-theta{color:var(--pi)}.k-piold{color:var(--old)}.k-y{color:var(--y)}.k-x{color:var(--x)}.k-R,.k-A{color:var(--R)}.k-b{color:var(--b)}
+.k-rho{color:var(--rho)}.k-eps{color:var(--eps)}.k-alpha{color:var(--al)}.k-mu,.k-sigma{color:var(--st)}.k-beta{color:var(--al)}.k-H{color:var(--ent)}
+.k-TP{color:#9ece6a}.k-FP{color:#ff9e64}.k-FN{color:#f7768e}.k-TN{color:#7aa2f7}.k-prec{color:#b392f0}.k-rec{color:#7dcfff}.k-F1{color:#e0af68}.k-thr{color:#e08fd0}.k-wS{color:#ff9e64}.k-wD{color:#f7768e}.k-wI{color:#7dcfff}.k-wN{color:#e6e6e6}
+.k-old{color:#9ece6a}.k-new{color:#7aa2f7}.k-cdc{color:#ff9e64}.k-app{color:#b392f0}.k-q{color:#e0af68}.k-lk{color:#5fc9b6}
+.chook{margin:0 0 16px}.drill{border-top:1px solid var(--line);padding:30px 0}
+.good{color:var(--good)}.bad{color:var(--bad)}.muted{color:var(--muted)}
+code{background:var(--card2);padding:1px 6px;border-radius:5px;font-size:.88em}
+#tip{position:fixed;z-index:50;max-width:300px;background:#f1f3f8;color:#11141b;font-size:13.5px;padding:7px 10px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity .12s}#tip b{display:block}
+.revisit,.summary{border-top:1px solid var(--line);padding:30px 0}
+.summary .box{background:linear-gradient(135deg,#171c2a,#132026);border:1px solid var(--line);border-radius:14px;padding:14px 22px}
+.summary ol{margin:6px 0;padding-left:22px}
+@media(max-width:640px){.pill .pl{display:none}.pill{padding-right:8px}}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.sticky{position:static}.compare{grid-template-columns:1fr}.speed{margin-left:0}}
+</style>
+</head>
+<body>
+<div id="tip"></div>
+<div class="wrap"><header>
+  <a class="back" href="../../">← All lessons</a>
+  <h1>Dodo prep 1: migrating a live database & how voice agents work</h1>
+  <p class="sub">For the dodo.ai first round · 4 chapters, 20 short steps · about 30 minutes at your own pace</p>
+  <div class="hook" id="hook"></div>
+  <div class="key" id="key"></div>
+  <p class="howto">Click a step to play just that part; it pauses at the end. <kbd>→</kbd>/<kbd>Space</kbd> next step · <kbd>←</kbd> previous · <kbd>R</kbd> replay. Your answers are saved in this browser.</p>
+</header></div>
+<nav id="prog"><div class="wrap"><span id="pills" style="display:contents"></span>
+  <span class="speed">speed <button data-s="0.5">0.5×</button><button data-s="0.75">0.75×</button><button data-s="1">1×</button></span></div></nav>
+<main class="wrap" id="chapters"></main>
+<div class="wrap">
+  <section class="drill" id="drill" hidden><h2>Say it out loud: likely interview questions</h2><p class="muted">Answer each one out loud in about 2 minutes as if Tim asked it, then jot your key points and reveal.</p><div id="drilllist"></div></section>
+  <section class="revisit" id="revisit"><h2>Revisit your answers</h2><p class="muted">What you thought, next to the model answers. Rate yourself to see what to review next time.</p><div id="revlist"></div></section>
+  <section class="summary"><div class="box"><b>Summary</b><ol id="summary"></ol></div></section>
+</div>
+<script>
+const LESSON = {"id": "dodo1", "hook": {"id": "hook", "whereLabel": "chapter 2, step 5", "q": "Dodo is on Supabase and wants to move to GCP while calls keep coming in 24/7. What could go wrong, and how would you avoid dropping a single call?", "model": "What can go wrong: writes made during the copy get lost, the two databases drift, Supabase-only features (Auth, Storage, RLS that calls auth.uid()) break, and a long maintenance window means unanswered calls. How to avoid it: inventory first, copy a snapshot, stream every change with CDC (logical replication / Database Migration Service), verify with counts, checksums and shadow reads, then cut over by pausing writes for seconds into a queue, waiting for lag 0 and flipping a flag. The agent keeps talking (\"I've noted that, the clinic will confirm\"), and reverse replication keeps a rollback path."}, "key": ["old", "new", "cdc", "app", "q", "lk"], "sym": {"old": ["Supabase · old DB", "Where Dodo's data lives today."], "new": ["GCP · new DB", "Cloud SQL for Postgres or AlloyDB."], "cdc": ["Change stream (CDC)", "Every insert/update/delete replayed on the other DB."], "app": ["App / voice agent", "The code answering calls; it must never stop."], "q": ["Queue · timers", "Buffers writes or retries; timeouts and backoff."], "lk": ["LiveKit", "Open-source real-time media + Agents framework."]}, "macros": {}, "chapters": [{"title": "What Supabase is, and what GCP gives you", "short": "Supabase vs GCP", "video": "media/ch1-supabase-vs-gcp.mp4", "poster": "media/ch1-supabase-vs-gcp-poster.jpg", "steps": [{"key": "supa", "title": "Supabase is a bundle", "html": "<span class=\"k-old\">Supabase</span> is hosted <b>Postgres</b> plus extras: <b>Auth</b> (users, logins, tokens), <b>Storage</b> (files), <b>Realtime</b> (push DB changes to clients) and <b>row-level security</b> (RLS: rules inside Postgres that decide which rows each user can see). Startups pick it because one product covers all of that.", "start": 0.0, "end": 8.3}, {"key": "gcp", "title": "GCP gives you the database", "html": "On GCP the target is <span class=\"k-new\">Cloud SQL for Postgres</span> (managed Postgres) or <span class=\"k-new\">AlloyDB</span> (Google's faster, Postgres-compatible engine). The engine stays Postgres, so tables and SQL move easily. The extras don't come along: auth → Identity Platform or your own, files → Cloud Storage, realtime → Pub/Sub or your own service.", "start": 8.3, "end": 16.4}, {"key": "gotcha", "title": "The hidden coupling", "html": "RLS policies themselves are plain Postgres, but Supabase's policies usually call <code>auth.uid()</code>, which only works with Supabase Auth. Auth is often the hardest part of leaving Supabase, so plan it first. In the interview: <i>“the database is the easy part; everything around it is the work.”</i>", "start": 16.4, "end": 21.8}, {"key": "why", "title": "Why migrate at all?", "html": "Common reasons: <b>compliance</b> (HIPAA controls under one cloud agreement, private networking, audit logs), <b>one cloud</b> (keep data next to the services and credits you already use on GCP), <b>scale and control</b> (replicas, tuning, backups, extensions) and <b>cost</b> at scale. Ask Tim which one drives it, because that defines what “done” means.", "start": 21.8, "end": 30.3}], "check": {"id": "c1", "q": "In one or two sentences: why is “just copy the Postgres database to Cloud SQL” not the whole migration from Supabase?", "model": "Supabase is Postgres plus Auth, Storage, Realtime and RLS policies tied to Supabase Auth (auth.uid()). Cloud SQL / AlloyDB only gives you Postgres, so auth, files, realtime and the policies that depend on auth need their own plan."}, "duration": 30.3}, {"title": "The zero-downtime migration playbook", "short": "Playbook", "video": "media/ch2-zero-downtime-playbook.mp4", "poster": "media/ch2-zero-downtime-playbook-poster.jpg", "steps": [{"key": "inventory", "title": "1 · Inventory", "html": "Before moving data, list everything the <span class=\"k-old\">old DB</span> does: tables and indexes, extensions, RLS policies, triggers and cron jobs, auth users, stored files, and every service that connects to it. Surprises found here are cheap; surprises found at cutover are outages.", "start": 0.0, "end": 7.7}, {"key": "snapshot", "title": "2 · Snapshot copy", "html": "Copy a consistent snapshot (say, at 10:00) of the 1.2M rows into the <span class=\"k-new\">new DB</span>. That takes minutes to hours, and calls keep writing to the <span class=\"k-old\">old DB</span> the whole time, so the copy is already out of date when it finishes.", "start": 7.7, "end": 15.3}, {"key": "cdc", "title": "3 · Stream every change (CDC)", "html": "<b>Change data capture</b>: read the old DB's change log and replay every insert/update/delete on the new one. Tools: Postgres <span class=\"k-cdc\">logical replication</span> or GCP's <span class=\"k-cdc\">Database Migration Service</span>. The new DB now trails by a couple of seconds (<span class=\"k-q\">lag ≈ 2 s</span>).", "start": 15.3, "end": 23.8}, {"key": "verify", "title": "4 · Verify", "html": "Prove the copies match before trusting the new one: row counts per table, checksums, and <b>shadow reads</b> (send the same read query to both and compare the results). Also load-test the new DB at peak traffic.", "start": 23.8, "end": 29.1}, {"key": "cutover", "title": "5 · Cutover", "html": "Pause writes for a few seconds and hold them in a <span class=\"k-q\">queue</span>, wait until lag hits 0, flip a feature flag so the <span class=\"k-app\">app</span> points at the <span class=\"k-new\">new DB</span>, then drain the queue into it. Calls never stop: the <span class=\"k-app\">agent</span> keeps talking and says “I've noted that, the clinic will confirm.” Downtime: seconds, and invisible to callers.", "start": 29.1, "end": 39.8, "resolves": "hook"}, {"key": "rollback", "title": "6 · Keep a way back", "html": "Turn on <span class=\"k-cdc\">reverse replication</span> (new → old) for a few days. If errors spike, flipping back is one flag change with no data lost. <b>Tradeoffs to name:</b> a big-bang copy in a maintenance window is simpler but means downtime, which Dodo can't afford; <b>dual writes</b> (app writes to both DBs) seem easy but drift when one write fails, so CDC is usually safer.", "start": 39.8, "end": 46.7}], "check": {"id": "c2", "q": "Why not just have the app write to both databases (dual writes) during the migration? And what does Dodo do with writes during the few seconds of cutover?", "model": "Dual writes drift: if one write succeeds and the other fails or they land in different orders, the DBs silently disagree. CDC copies from one source of truth (the old DB's change log). During cutover, writes go into a queue for a few seconds, then drain into the new DB once lag is 0 and the flag flips, while the agent keeps the caller in a graceful “noted, the clinic will confirm” mode."}, "duration": 46.7}, {"title": "How a voice agent works, and where LiveKit fits", "short": "Voice + LiveKit", "video": "media/ch3-voice-agents-livekit.mp4", "poster": "media/ch3-voice-agents-livekit-poster.jpg", "steps": [{"key": "path", "title": "One turn of a call", "html": "A phone call arrives over the phone network (PSTN) through a telephony provider such as Twilio, using SIP (the protocol that sets up calls). A media server carries the audio streams. Then <span class=\"k-new\">speech-to-text</span> → <span class=\"k-app\">LLM agent</span> (which can call tools like “find a slot” in the PMS) → <span class=\"k-old\">text-to-speech</span> → back to the caller. <i>Dodo's current stack isn't public. A common setup is Twilio plus a hosted voice-agent platform (Vapi, Retell) or a framework like Pipecat. Treat that as a guess and ask.</i>", "start": 0.0, "end": 12.933}, {"key": "budget", "title": "The latency budget", "html": "People notice a pause longer than about a second. If every stage waits for the previous one to finish (full transcript, then the full LLM answer, then the full audio), you get about 2.5 s of dead air per turn.", "start": 12.933, "end": 20.633}, {"key": "stream", "title": "Fix: stream everything", "html": "Each stage starts on partial output: STT sends words as they're heard, the LLM streams tokens, and TTS starts speaking as soon as the first sentence is ready. Same models, now about 0.9 s. Other levers: run servers close to the telephony region, use faster models, and say a quick filler line (“Let me check that”) before slow tool calls.", "start": 20.633, "end": 26.533}, {"key": "bargein", "title": "Barge-in and turn detection", "html": "Real callers interrupt. <b>Barge-in</b>: voice-activity detection hears the caller and stops TTS instantly. <b>Turn detection</b> decides when the caller has actually finished (a pause vs. the end of a thought). Too eager and the agent cuts people off; too slow and it feels laggy.", "start": 26.533, "end": 33.233}, {"key": "livekit", "title": "What LiveKit is", "html": "<span class=\"k-lk\">LiveKit</span> is an open-source (Apache 2.0) real-time platform: a WebRTC media server, <span class=\"k-lk\">LiveKit SIP</span> to bridge phone calls in through a SIP trunk (Twilio, Telnyx, …), and the <span class=\"k-lk\">Agents framework</span> (Python/Node) that runs STT → LLM → TTS with plugins for most providers, plus built-in turn detection and interruption handling. Run it yourself or on managed <span class=\"k-lk\">LiveKit Cloud</span>.", "start": 33.233, "end": 39.833}, {"key": "tradeoff", "title": "Why a team moves to it", "html": "<b>Pros:</b> you own the pipeline, so you can tune latency, swap STT/LLM/TTS vendors, pay less per minute at high volume than an all-in-one platform, and self-host for tighter control over patient data. <b>Costs:</b> more to operate (scaling, SIP, monitoring), rebuilding what the old platform did, and moving live call traffic safely. It's the same shape as the DB migration: more control, more responsibility. Roll it out gradually, e.g. route 5% of one clinic's calls first.", "start": 39.833, "end": 48.433}], "check": {"id": "c3", "q": "Name the stages of one voice-agent turn, and two techniques that keep it under about 1 second.", "model": "Telephony (PSTN/SIP) → media server → STT → LLM agent (+ tools) → TTS → back to the caller. Keep it fast by streaming every stage (partial transcripts, token streaming, TTS on the first sentence), co-locating servers near the telephony region, faster models, filler phrases before slow tool calls, and good turn detection/barge-in."}, "duration": 48.433}, {"title": "Touching the clinic's PMS safely", "short": "PMS safety", "video": "media/ch4-pms-safely.mp4", "poster": "media/ch4-pms-safely-poster.jpg", "steps": [{"key": "retry", "title": "Timeouts and retries", "html": "The practice management system (PMS) is someone else's software: slow, sometimes down, rate-limited. Every call gets a <span class=\"k-q\">timeout</span> (for example 3 s), then retries with <b>exponential backoff</b> (0.5 s, 1 s, 2 s) plus random <b>jitter</b> so hundreds of agents don't retry in lockstep. After that, stop and fall back.", "start": 0.0, "end": 8.5}, {"key": "idem", "title": "Idempotency keys", "html": "The dangerous case: the booking succeeded but the reply got lost, so a retry books Bella twice. Fix: give each write an <b>idempotency key</b> (e.g. <span class=\"k-q\">call-8812-book-1</span>) and store it with the result. A repeat with the same key returns the existing booking instead of creating a new one. If the PMS doesn't support keys, keep your own bookings table and check it before writing.", "start": 8.5, "end": 17.1}, {"key": "tenant", "title": "Multi-tenant isolation", "html": "Hundreds of clinics share one system. Every row, query, cache key, log line and LLM prompt carries a <code>clinic_id</code>. Each clinic has its own PMS credentials, hours and rules. Enforce isolation in the database (RLS or per-tenant schemas), not just in app code. For HIPAA, add encryption, audit logs and least-privilege access.", "start": 17.1, "end": 23.2}, {"key": "fallback", "title": "Graceful fallbacks", "html": "If the PMS is down, the <span class=\"k-app\">agent</span> still answers: “I've noted your request; the clinic will text to confirm,” and the task goes into a <span class=\"k-q\">queue</span> for staff or a later retry. If the LLM provider is down, switch to a backup model or transfer the call to the front desk. The rule: the call is always answered and the work is never lost.", "start": 23.2, "end": 30.5}], "check": {"id": "c4", "q": "The agent booked an appointment, but the PMS reply timed out and the agent retried. How do you make sure there's only one appointment?", "model": "Use an idempotency key per booking attempt (e.g. call ID + action). Store key → result; on retry with the same key, return the stored booking instead of writing again. If the PMS has no idempotency support, keep your own bookings record and check the PMS for an existing appointment (same patient/slot) before writing. Combine with timeouts, backoff with jitter, and a fallback to a staff queue."}, "duration": 30.5}], "drill": [{"id": "d1", "q": "“We're on Supabase and want to move to GCP. Walk me through how you'd plan it without dropping calls.” Start with the questions you'd ask me.", "model": "Ask first: why are we moving (compliance, cost, consolidation)? How big is the DB and what's the write rate? Which Supabase features do we use (Auth, Storage, Realtime, RLS, edge functions)? What downtime is acceptable? Then: inventory → snapshot → CDC (logical replication / DMS) → verify (counts, checksums, shadow reads, load test) → cutover behind a flag with a seconds-long write pause buffered in a queue → reverse replication for rollback. Migrate auth and storage as separate workstreams, and do it at the lowest-traffic hour even though it's near-zero downtime."}, {"id": "d2", "q": "“Design the system behind our AI phone receptionist.” Give the high-level components and the hardest problem.", "model": "Clarify: number of clinics, concurrent calls at peak, languages, which PMSs, SMS too? Components: telephony (SIP trunk) → media server / LiveKit → agent workers (STT → LLM with tools → TTS, streaming) → tools service talking to each PMS → DB (calls, tenants, bookings, transcripts) → queue for follow-ups/recalls → dashboard for staff → evals/monitoring. Hardest parts: sub-second latency (streaming, barge-in, turn detection) and reliable PMS writes (timeouts, retries, idempotency, fallbacks). Also multi-tenancy and HIPAA (encryption, audit logs, BAAs with vendors)."}, {"id": "d3", "q": "“We're thinking about moving to LiveKit. What would you want to know, and how would you roll it out?”", "model": "Want to know: what we use today and its pain (latency, cost per minute, vendor lock-in, HIPAA/data control), call volume, and whether we'd self-host or use LiveKit Cloud. Tradeoff: more control over the pipeline and cost vs more to operate. Rollout: build the agent on LiveKit Agents with the same STT/LLM/TTS, run offline evals on recorded/simulated calls, then route a small % of one clinic's calls, compare latency, task success and transfer rate, and ramp up with a quick switch back to the old path."}], "summary": ["Supabase = Postgres + Auth + Storage + Realtime + RLS. GCP (Cloud SQL / AlloyDB) gives you Postgres; the extras, especially auth, are the real migration work.", "Zero-downtime playbook: inventory → snapshot → CDC → verify → cutover behind a flag (seconds-long write pause in a queue) → reverse replication for rollback.", "Prefer CDC over dual writes; big-bang windows are simpler but drop calls.", "Voice turn: telephony → media → STT → LLM + tools → TTS. Keep it under 1 s by streaming every stage; handle barge-in and turn detection.", "LiveKit = open-source WebRTC media server + SIP bridge + Agents framework, self-hosted or Cloud. More control and lower cost at scale, more to operate.", "PMS writes: timeouts, backoff with jitter, idempotency keys, clinic_id everywhere, and the call is always answered."]};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const K=(q,f)=>`lap:${LESSON.id}:${q}:${f}`;
+const store={get:(q,f)=>localStorage.getItem(K(q,f))||"",set:(q,f,v)=>localStorage.setItem(K(q,f),v)};
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const fmt=t=>t<60?Math.round(t)+"s":Math.floor(t/60)+"m"+String(Math.round(t%60)).padStart(2,"0");
+const DRILL=LESSON.drill||[];
+const REV=[];if(LESSON.hook)REV.push([LESSON.hook,"Opening prediction"]);
+LESSON.chapters.forEach((c,i)=>{if(c.hook)REV.push([c.hook,`Chapter ${i+1} prediction`]);REV.push([c.check,`Chapter ${i+1} ${c.check.kind||"check"}`]);});
+DRILL.forEach((q,i)=>REV.push([q,`Drill ${i+1}`]));
+const QA={}; REV.forEach(([q])=>QA[q.id]=q);
+
+// ---------- answers ----------
+function compareHTML(qid){return `<div class="compare" data-cmp="${qid}"><div class="mine"><h5>Your answer</h5><p></p></div><div class="model"><h5>Model answer</h5><p>${QA[qid].model}</p></div>
+  <div class="rate">How did you do? <button class="g" data-r="got">Got it</button><button class="p" data-r="partly">Partly</button><button class="m" data-r="missed">Missed</button></div></div>`;}
+function refreshCompares(){$$("[data-cmp]").forEach(el=>{const q=el.dataset.cmp,a=store.get(q,"answer").trim(),p=el.querySelector(".mine p");
+  p.textContent=a||"(no answer typed yet)";p.classList.toggle("empty",!a);const r=store.get(q,"rating");el.querySelectorAll(".rate button").forEach(b=>b.classList.toggle("on",b.dataset.r===r));});}
+function qaHTML(qid,{reveal=true,tag="🧠 Recall check"}={}){const q=QA[qid];
+  return `<div class="qa" data-qa="${qid}"><div class="q"><span class="tag">${tag} · </span>${q.q}</div>
+  <textarea data-ans="${qid}" placeholder="Type your answer first…"></textarea>
+  <div class="row">${reveal?`<button class="primary" data-reveal="${qid}">Reveal model answer</button>`:""}<span class="saved" data-saved="${qid}"></span></div>
+  ${reveal?`<div data-revealbox="${qid}" hidden>${compareHTML(qid)}</div>`:""}</div>`;}
+document.addEventListener("input",e=>{const q=e.target.dataset&&e.target.dataset.ans;if(!q)return;store.set(q,"answer",e.target.value);
+  $$(`[data-ans="${q}"]`).forEach(t=>{if(t!==e.target)t.value=e.target.value;});$$(`[data-saved="${q}"]`).forEach(s=>s.textContent="saved ✓");refreshCompares();});
+document.addEventListener("click",e=>{const rv=e.target.closest("[data-reveal]");if(rv){const q=rv.dataset.reveal;store.set(q,"revealed","1");showReveal(q);return;}
+  const rb=e.target.closest(".rate button");if(rb){const q=rb.closest("[data-cmp]").dataset.cmp;store.set(q,"rating",rb.dataset.r);refreshCompares();}});
+function showReveal(q){$$(`[data-revealbox="${q}"]`).forEach(b=>b.hidden=false);$$(`[data-reveal="${q}"]`).forEach(b=>b.textContent="Revealed ✓");refreshCompares();}
+
+// ---------- build page ----------
+const hookHTML=H=>`<div><span class="lbl">Predict first:</span> ${H.q}</div><textarea data-ans="${H.id}" placeholder="Your prediction (you'll compare it with the answer in ${H.whereLabel})" style="margin-top:10px"></textarea><div class="row"><span class="saved" data-saved="${H.id}"></span></div>`;
+if(LESSON.hook)$("#hook").innerHTML=hookHTML(LESSON.hook);else $("#hook").remove();
+$("#key").innerHTML=LESSON.key.map(k=>`<span class="chip sym k-${k}" data-k="${k}">${LESSON.sym[k][0]}</span>`).join("");
+$("#chapters").innerHTML=LESSON.chapters.map((c,ci)=>`<section class="chapter" id="ch${ci}" data-ci="${ci}">
+  <h2><span class="cn">Chapter ${ci+1}</span>${c.title}</h2>
+  ${c.hook?`<div class="hook chook" data-hook="${c.hook.id}">${hookHTML(c.hook)}</div>`:""}
+  <div class="grid"><div><div class="sticky"><video id="v${ci}" src="${c.video}" poster="${c.poster}" muted playsinline preload="auto"></video>
+    <div class="segbar"><i id="sb${ci}"></i></div>
+    <div class="vbar"><button data-act="prev" data-ci="${ci}">← Prev</button><button data-act="replay" data-ci="${ci}">↻ Replay</button><button class="primary" data-act="next" data-ci="${ci}" id="nb${ci}">▶ Play step 1</button><span class="status" id="st${ci}"></span></div></div></div>
+  <ol class="steps">${c.steps.map((s,si)=>`<li data-ci="${ci}" data-si="${si}"><div class="sh"><span class="num">${si+1}</span><span class="t">${s.title}</span><span class="d">${fmt(s.end-s.start)}</span></div><div class="sb">${s.html}${s.resolves?`<div style="margin-top:10px"><b class="muted" style="font-size:13px">YOUR PREDICTION VS THE ANSWER</b>${compareHTML(s.resolves)}</div>`:""}</div></li>`).join("")}</ol></div>
+  ${qaHTML(c.check.id,{tag:c.check.tag||"🧠 Recall check"})}</section>`).join("");
+$("#pills").innerHTML=LESSON.chapters.map((c,ci)=>`<span class="pill" data-ci="${ci}"><span class="n">${ci+1}</span><span class="pl">${c.short}</span><span class="segs">${c.steps.map(()=>"<i></i>").join("")}</span></span>`).join("");
+if(DRILL.length){$("#drill").hidden=false;$("#drilllist").innerHTML=DRILL.map((q,i)=>qaHTML(q.id,{tag:`⚡ Drill ${i+1}`})).join("");}
+$("#revlist").innerHTML=REV.map(([q,lab])=>`<div class="qa"><div class="q"><span class="tag">${lab} · </span>${q.q}</div>${compareHTML(q.id)}</div>`).join("");
+$("#summary").innerHTML=LESSON.summary.map(s=>`<li>${s}</li>`).join("");
+$$("textarea[data-ans]").forEach(t=>{t.value=store.get(t.dataset.ans,"answer");if(t.value)$$(`[data-saved="${t.dataset.ans}"]`).forEach(s=>s.textContent="saved ✓");});
+Object.keys(QA).forEach(q=>{if(store.get(q,"revealed"))showReveal(q);});
+refreshCompares();
+
+// ---------- player ----------
+const S=LESSON.chapters.map(()=>({cur:-1,done:new Set(),atCheck:false}));
+let active=0, speed=+(localStorage.getItem("lap:speed")||1), stopAt=null, raf=null;
+const vid=ci=>document.getElementById("v"+ci);
+function setSpeed(s){speed=s;localStorage.setItem("lap:speed",s);$$(".speed button").forEach(b=>b.classList.toggle("on",+b.dataset.s===s));LESSON.chapters.forEach((_,ci)=>vid(ci).playbackRate=s);}
+function render(){LESSON.chapters.forEach((c,ci)=>{const st=S[ci];
+  $$(`li[data-ci="${ci}"]`).forEach(li=>{const si=+li.dataset.si;li.classList.toggle("active",si===st.cur);li.classList.toggle("done",st.done.has(si));});
+  const p=$(`.pill[data-ci="${ci}"]`);p.classList.toggle("on",ci===active);p.classList.toggle("done",st.done.size===c.steps.length);
+  p.querySelectorAll(".segs i").forEach((i,k)=>i.classList.toggle("d",st.done.has(k)));
+  const nb=document.getElementById("nb"+ci),last=st.cur===c.steps.length-1&&st.done.has(st.cur);
+  nb.textContent=st.cur<0?"▶ Play step 1":last?(st.atCheck&&ci<LESSON.chapters.length-1?"Next chapter ↓":(st.atCheck?(DRILL.length?"Interview questions ↓":"Revisit ↓"):(LESSON.chapters[ci].check.tag?"Practice ↓":"Recall check ↓"))):`Next step ${st.cur+2} →`;});}
+function stopAll(except){LESSON.chapters.forEach((_,ci)=>{if(ci!==except)vid(ci).pause();});}
+function playStep(ci,si){const c=LESSON.chapters[ci],s=c.steps[si],v=vid(ci);active=ci;S[ci].cur=si;S[ci].atCheck=false;stopAll(ci);
+  cancelAnimationFrame(raf);stopAt={ci,si,t:s.end-0.1};v.playbackRate=speed;
+  const go=()=>{v.currentTime=s.start+0.01;v.play().catch(()=>{});};
+  if(v.readyState>=1)go();else v.addEventListener("loadedmetadata",go,{once:true});
+  document.getElementById("st"+ci).textContent=`Step ${si+1} of ${c.steps.length} · playing`;
+  const li=$(`li[data-ci="${ci}"][data-si="${si}"]`);render();
+  const r=li.getBoundingClientRect();if(r.top<$("#prog").offsetHeight+4||r.bottom>innerHeight)li.scrollIntoView({block:"nearest",behavior:"smooth"});
+  tick();}
+function tick(){raf=requestAnimationFrame(()=>{if(!stopAt)return;const {ci,si,t}=stopAt,v=vid(ci),s=LESSON.chapters[ci].steps[si];
+  const f=Math.max(0,Math.min(1,(v.currentTime-s.start)/(s.end-s.start)));document.getElementById("sb"+ci).style.width=(f*100)+"%";
+  if(v.currentTime>=t){v.pause();stopAt=null;S[ci].done.add(si);document.getElementById("st"+ci).textContent=`Step ${si+1} of ${LESSON.chapters[ci].steps.length} · paused`;
+    document.getElementById("sb"+ci).style.width="100%";render();return;}
+  tick();});}
+function next(ci){const c=LESSON.chapters[ci],st=S[ci];
+  if(st.cur<c.steps.length-1)return playStep(ci,st.cur+1);
+  if(!st.atCheck){st.atCheck=true;document.querySelector(`#ch${ci} .qa`).scrollIntoView({block:"center",behavior:"smooth"});render();return;}
+  if(ci<LESSON.chapters.length-1){document.getElementById("ch"+(ci+1)).scrollIntoView({behavior:"smooth"});playStep(ci+1,0);}
+  else (DRILL.length?$("#drill"):$("#revisit")).scrollIntoView({behavior:"smooth"});}
+function prev(ci){const st=S[ci];if(st.cur>0)playStep(ci,st.cur-1);else if(ci>0){document.getElementById("ch"+(ci-1)).scrollIntoView({behavior:"smooth"});playStep(ci-1,LESSON.chapters[ci-1].steps.length-1);}else playStep(0,0);}
+function replay(ci){playStep(ci,Math.max(0,S[ci].cur));}
+document.addEventListener("click",e=>{const li=e.target.closest("ol.steps li");if(li&&!e.target.closest(".compare")){playStep(+li.dataset.ci,+li.dataset.si);return;}
+  const b=e.target.closest("[data-act]");if(b){const ci=+b.dataset.ci;({next,prev,replay})[b.dataset.act](ci);return;}
+  const p=e.target.closest(".pill");if(p){active=+p.dataset.ci;document.getElementById("ch"+active).scrollIntoView({behavior:"smooth"});render();return;}
+  const sp=e.target.closest(".speed button");if(sp){setSpeed(+sp.dataset.s);return;}
+  const v=e.target.closest("video");if(v){const ci=+v.id.slice(1);if(!v.paused){v.pause();stopAt=null;}else if(S[ci].cur>=0&&!S[ci].done.has(S[ci].cur)&&v.currentTime<LESSON.chapters[ci].steps[S[ci].cur].end-0.1){stopAt={ci,si:S[ci].cur,t:LESSON.chapters[ci].steps[S[ci].cur].end-0.1};v.play();tick();}else replay(ci);}});
+document.addEventListener("keydown",e=>{if(e.target.closest&&e.target.closest("textarea,input"))return;if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();next(active);}else if(e.key==="ArrowLeft"){e.preventDefault();prev(active);}else if(e.key==="r"||e.key==="R"){e.preventDefault();replay(active);}});
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){const ci=+en.target.dataset.ci;if(ci!==active){active=ci;render();}}});},{rootMargin:"-45% 0px -45% 0px"});
+$$("section.chapter").forEach(s=>io.observe(s));
+
+// ---------- tooltips ----------
+const tip=$("#tip"),keyOf=el=>el.dataset.k||([...el.classList].find(c=>c.startsWith("k-"))||"").slice(2);
+document.addEventListener("mouseover",e=>{const el=e.target.closest&&e.target.closest(".sym");if(!el)return;const k=keyOf(el),d=LESSON.sym[k];if(!d)return;tip.innerHTML=`<b>${d[0]}</b>${d[1]}`;tip.style.opacity=1;$$(".k-"+k+".sym").forEach(s=>s.classList.add("hl"));});
+document.addEventListener("mousemove",e=>{tip.style.left=Math.min(e.clientX+14,innerWidth-320)+"px";tip.style.top=(e.clientY+18)+"px";});
+document.addEventListener("mouseout",e=>{if(e.target.closest&&e.target.closest(".sym")){tip.style.opacity=0;$$(".hl").forEach(s=>s.classList.remove("hl"));}});
+
+setSpeed(speed);render();
+const setNavH=()=>document.documentElement.style.setProperty("--navh",$("#prog").offsetHeight+"px");setNavH();addEventListener("resize",setNavH);
+window.addEventListener("load",()=>{const sym=(k,t)=>"\\htmlClass{sym k-"+k+"}{"+t+"}";const M={};Object.entries(LESSON.macros).forEach(([m,[k,t]])=>M[m]=k?sym(k,t):t);
+  if(window.renderMathInElement)renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"\\(",right:"\\)",display:false}],macros:M,trust:c=>c.command==="\\htmlClass",strict:"ignore",throwOnError:false});
+  else document.body.insertAdjacentHTML("afterbegin",'<div style="background:#3b1d24;padding:8px;text-align:center">Formulas need internet (KaTeX CDN).</div>');
+  window.__ready=true;});
+</script>
+</body>
+</html>

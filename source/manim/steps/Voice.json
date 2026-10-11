@@ -1,0 +1,41 @@
+{
+ "duration": 48.433,
+ "steps": [
+  {
+   "key": "path",
+   "start": 0.0,
+   "end": 12.933,
+   "hold": 1.8
+  },
+  {
+   "key": "budget",
+   "start": 12.933,
+   "end": 20.633,
+   "hold": 1.8
+  },
+  {
+   "key": "stream",
+   "start": 20.633,
+   "end": 26.533,
+   "hold": 1.8
+  },
+  {
+   "key": "bargein",
+   "start": 26.533,
+   "end": 33.233,
+   "hold": 1.8
+  },
+  {
+   "key": "livekit",
+   "start": 33.233,
+   "end": 39.833,
+   "hold": 1.8
+  },
+  {
+   "key": "tradeoff",
+   "start": 39.833,
+   "end": 48.433,
+   "hold": 2.2
+  }
+ ]
+}
