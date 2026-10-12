@@ -216,16 +216,131 @@ class Playbook(StepScene):
         self.say("Old DB stays in sync for a few days, so flipping back is one flag change")
         self.end(2.2)
 
-# ------------------------------------------------------------ Chapter 3
+# Colors for the worked-example symbols (same colors as the lesson page chips)
+C_W = C_APP      # w  write rate (changes the app makes per second)
+C_A = C_NEW      # a  apply rate (changes the new DB replays per second)
+C_B = C_Q        # B  backlog / lag (changes not yet on the new DB)
+C_STT = "#7dcfff"; C_TTS = "#e08fd0"; C_TOOL = C_BAD
+
+def lines(rows, y0, buff=0.16, x=None):
+    """rows: list of (text, color, size). Left-aligned block whose top sits at y0."""
+    g = VGroup(*[T(t, fs, c) for t, c, fs in rows]).arrange(DOWN, aligned_edge=LEFT, buff=buff)
+    if g.width > 13.2: g.scale_to_fit_width(13.2)
+    g.move_to([0 if x is None else x, y0 - g.height / 2, 0])
+    return g
+
+# ------------------------------------------------------------ Chapter 3: catch-up and cutover math
+class CatchUp(StepScene):
+    def construct(self):
+        old = box("Supabase (old)", C_OLD, w=3.2, h=1.0, fs=22).move_to([-4.7, 1.5, 0])
+        new = box("GCP (new)", C_NEW, w=3.2, h=1.0, fs=22).move_to([4.7, 1.5, 0])
+        app = box("Calls (app)", C_APP, w=2.6, h=0.8, fs=22).move_to([-4.7, -0.6, 0])
+        wal = box("WAL", C_CDC, w=1.6, h=0.7, fs=20, sub="change log").move_to([-1.9, 1.5, 0])
+
+        self.begin("terms")
+        self.title("Two rates decide whether the copy catches up")
+        self.play(FadeIn(old), FadeIn(new), FadeIn(app), run_time=1.0)
+        wa = arrow(app.get_top(), old.get_bottom(), C_W)
+        wl = T("w = write rate (changes/s)", 21, C_W).next_to(wa, RIGHT, buff=0.15)
+        self.play(GrowArrow(wa), FadeIn(wl), run_time=0.9); self.wait(0.5)
+        self.play(FadeIn(wal), run_time=0.7)
+        aa = arrow(wal.get_right(), new.get_left(), C_A)
+        al = T("a = apply rate (changes/s)", 21, C_A).next_to(aa, UP, buff=0.12)
+        self.play(GrowArrow(aa), FadeIn(al), run_time=0.9); self.wait(0.5)
+        bk = Rectangle(width=2.4, height=0.42, stroke_width=0, fill_color=C_B, fill_opacity=0.85).move_to([2.6, 0.75, 0])
+        bl = VGroup(T("B = backlog:", 21, C_B), T("changes not yet on the new DB", 19, C_B)).arrange(DOWN, buff=0.06).next_to(bk, DOWN, buff=0.15)
+        self.play(GrowFromEdge(bk, LEFT), FadeIn(bl), run_time=1.0); self.wait(0.4)
+        rule = lines([("Backlog grows by w and shrinks by a every second", FG, 24),
+                      ("net change per second = w − a", C_B, 24)], -1.6)
+        self.play(FadeIn(rule[0]), run_time=0.8); self.wait(0.6)
+        self.play(FadeIn(rule[1]), run_time=0.8)
+        self.say("Every change hits the WAL first; logical replication replays it on the new DB")
+        self.end()
+
+        # chart helper: backlog over time
+        def chart(segs, tmax_h, bmax, color_rows=None):
+            ox, oy, W, H = -5.4, -0.15, 10.8, 2.5
+            ax = VGroup(Line([ox, oy, 0], [ox + W, oy, 0], color=MUTED, stroke_width=2),
+                        Line([ox, oy, 0], [ox, oy + H, 0], color=MUTED, stroke_width=2))
+            yl = T("backlog B", 17, C_B).next_to(ax[1], UP, buff=0.08)
+            xl = T("time (hours)", 17, MUTED).next_to(ax[0], DOWN, buff=0.08).align_to(ax[0], RIGHT).shift(DOWN * 0.22)
+            P = lambda t, b: [ox + W * t / tmax_h, oy + H * min(b, bmax) / bmax, 0]
+            ticks = VGroup(*[T(f"{h}", 15, MUTED).move_to([ox + W * h / tmax_h, oy - 0.2, 0]) for h in range(0, int(tmax_h) + 1)])
+            parts = VGroup(*[Line(P(*a), P(*b), color=c, stroke_width=5) if not dash else DashedLine(P(*a), P(*b), color=c, stroke_width=5)
+                             for a, b, c, dash in segs])
+            return VGroup(ax, yl, xl, ticks), parts, P
+
+        self.begin("ex1")
+        self.play(*[FadeOut(m) for m in [old, new, app, wal, wa, wl, aa, al, bk, bl, rule]], run_time=0.7)
+        self.title("Worked example 1 · w = 50/s, snapshot 2 h, a = 250/s")
+        frame, parts, P = chart([((0, 0), (2, 360000), C_B, False), ((2, 360000), (2.5, 0), C_A, False)], 3, 400000)
+        self.play(FadeIn(frame), run_time=0.7)
+        e = lines([("1. Snapshot time T = 2 h = 2 × 3,600 = 7,200 s", FG, 23),
+                   ("2. Backlog B = w × T = 50 × 7,200 = 360,000 changes", C_B, 23),
+                   ("3. Net shrink = a − w = 250 − 50 = 200 changes/s", C_A, 23),
+                   ("4. Catch-up = B ÷ (a − w) = 360,000 ÷ 200 = 1,800 s = 30 min", C_GOOD, 23)], -0.75)
+        self.play(FadeIn(e[0]), run_time=0.7); self.wait(0.6)
+        self.play(Create(parts[0]), FadeIn(e[1]), run_time=1.6); self.wait(0.8)
+        pk = T("360,000", 17, C_B).next_to(P(2, 360000), UP, buff=0.08)
+        self.play(FadeIn(pk), FadeIn(e[2]), run_time=0.9); self.wait(0.8)
+        self.play(Create(parts[1]), FadeIn(e[3]), run_time=1.4)
+        self.say("Snapshot builds the backlog; the net rate a − w drains it")
+        self.end(2.0)
+
+        self.begin("ex2")
+        self.play(FadeOut(e), FadeOut(parts[1]), FadeOut(pk), run_time=0.6)
+        self.title("Worked example 2 (edge case) · a is not above w")
+        flat = DashedLine(P(2, 360000), P(3, 360000), color=C_BAD, stroke_width=5)
+        up = Line(P(2, 360000), P(3, 396000), color=C_BAD, stroke_width=5)
+        e2 = lines([("a = 50/s:  net = 50 − 50 = 0/s  →  360,000 ÷ 0  →  never catches up", C_BAD, 23),
+                    ("a = 40/s:  net = 40 − 50 = −10/s  →  backlog GROWS 10 × 3,600 = 36,000 per hour", C_BAD, 23),
+                    ("Plan with PEAK w (≈ 3 × average): 3 × 50 = 150/s, so you need a > 150/s", C_W, 23),
+                    ("Fixes: parallel apply, bigger target, build indexes after the copy, run off-peak", FG, 21)], -0.75)
+        self.play(Create(flat), FadeIn(e2[0]), run_time=1.2); self.wait(0.8)
+        self.play(Create(up), FadeIn(e2[1]), run_time=1.2); self.wait(0.8)
+        self.play(FadeIn(e2[2]), run_time=0.8); self.wait(0.6)
+        self.play(FadeIn(e2[3]), run_time=0.8)
+        self.say("If a ≤ w the division has no positive answer: the copy never catches up", C_BAD)
+        self.end(2.0)
+
+        self.begin("cutover")
+        self.play(*[FadeOut(m) for m in [frame, parts[0], flat, up, e2]], run_time=0.6)
+        self.title("Cutover math · lag 2 s, w = 50/s, a = 250/s")
+        e3 = lines([("1. In flight = w × lag = 50 × 2 = 100 changes", C_B, 24),
+                    ("2. Pause writes into a queue for 5 s: 5 × 50 = 250 queued writes", C_Q, 24),
+                    ("3. Drain in-flight changes: 100 ÷ 250 = 0.4 s  →  lag = 0", C_A, 24),
+                    ("4. Flip the flag, replay the queue on GCP: 250 ÷ 250 = 1 s", C_NEW, 24),
+                    ("Callers wait seconds, not hours, because B is tiny by now", C_GOOD, 24)], 2.2, buff=0.3)
+        for i, l in enumerate(e3):
+            self.play(FadeIn(l, shift=UP * 0.1), run_time=0.7); self.wait(0.7)
+        self.say("Same two rates, tiny backlog: the write pause lasts seconds")
+        self.end(2.0)
+
+        self.begin("faded")
+        self.play(FadeOut(e3), run_time=0.6)
+        self.title("Your turn · w = 30/s, snapshot 4 h, a = 150/s")
+        e4 = lines([("1. T = 4 × 3,600 = 14,400 s", FG, 24),
+                    ("2. B = w × T = 30 × 14,400 = 432,000 changes", C_B, 24),
+                    ("3. Net shrink = a − w = 150 − 30 = 120 changes/s", C_A, 24),
+                    ("4. Catch-up = 432,000 ÷ 120 = ?", C_GOOD, 26)], 2.0, buff=0.32)
+        for l in e4[:3]:
+            self.play(FadeIn(l, shift=UP * 0.1), run_time=0.7); self.wait(0.6)
+        self.play(FadeIn(e4[3], shift=UP * 0.1), run_time=0.8)
+        box4 = SurroundingRectangle(e4[3], color=C_GOOD, buff=0.15)
+        self.play(Create(box4), run_time=0.7)
+        self.say("Pause here: do step 4 on paper, then check it beside the video")
+        self.end(2.0)
+
+# ------------------------------------------------------------ Chapter 4: voice pipeline and its latency budget
 class Voice(StepScene):
     def construct(self):
         P = {"caller": [-5.4, 1.3], "tel": [-1.9, 1.3], "media": [1.6, 1.3], "stt": [5.0, 1.3], "llm": [5.0, -1.2], "tts": [1.6, -1.2]}
         caller = box("Caller", C_APP, w=2.4, h=1.0, fs=24, sub="phone").move_to(P["caller"] + [0])
         tel = box("Telephony", FG, w=2.8, h=1.0, fs=24, sub="PSTN / SIP").move_to(P["tel"] + [0])
         media = box("Media server", FG, w=2.8, h=1.0, fs=24, sub="audio streams").move_to(P["media"] + [0])
-        stt = box("STT", C_NEW, w=2.4, h=1.0, fs=24, sub="speech → text").move_to(P["stt"] + [0])
+        stt = box("STT", C_STT, w=2.4, h=1.0, fs=24, sub="speech → text").move_to(P["stt"] + [0])
         llm = box("LLM agent", C_APP, w=2.6, h=1.0, fs=24, sub="+ tools (PMS)").move_to(P["llm"] + [0])
-        tts = box("TTS", C_OLD, w=2.4, h=1.0, fs=24, sub="text → speech").move_to(P["tts"] + [0])
+        tts = box("TTS", C_TTS, w=2.4, h=1.0, fs=24, sub="text → speech").move_to(P["tts"] + [0])
         arrs = VGroup(arrow(caller.get_right(), tel.get_left()), arrow(tel.get_right(), media.get_left()),
                       arrow(media.get_right(), stt.get_left()), arrow(stt.get_bottom(), llm.get_top()),
                       arrow(llm.get_left(), tts.get_right()), arrow(tts.get_top(), media.get_bottom()))
@@ -238,49 +353,93 @@ class Voice(StepScene):
             if a is not None: self.play(GrowArrow(a), run_time=0.35)
         self.play(GrowArrow(arrs[5]), run_time=0.4)
         d = Dot(color=C_Q, radius=0.12).move_to(caller)
-        path = [tel, media, stt, llm, tts, media, tel, caller]
-        for m in path:
+        for m in [tel, media, stt, llm, tts, media, tel, caller]:
             self.play(d.animate.move_to(m), run_time=0.45)
         self.play(FadeOut(d), run_time=0.3)
         self.say("Caller audio → STT → LLM (may call tools) → TTS → back to the caller")
         self.end()
 
-        self.begin("budget")
-        self.title("Latency budget: no streaming")
-        self.play(diag.animate.scale(0.62).move_to([0, 1.25, 0]), run_time=1.0)
-        def bars(parts, y):
-            g = VGroup(); x = -6.0; s = 4.2 / 1000  # 1000 ms = 4.2 units
+        S = 4.2 / 1000  # 1000 ms = 4.2 units
+        def bars(parts, y, x0=-6.0):
+            g = VGroup(); x = x0
             for name, ms, c in parts:
-                r = Rectangle(width=ms * s, height=0.5, stroke_width=1, stroke_color="#0e1117", fill_color=c, fill_opacity=0.85)
-                r.move_to([x + ms * s / 2, y, 0]); x += ms * s
+                r = Rectangle(width=ms * S, height=0.5, stroke_width=1, stroke_color="#0e1117", fill_color=c, fill_opacity=0.85)
+                r.move_to([x + ms * S / 2, y, 0]); x += ms * S
                 l = T(f"{name} {ms}", 15, "#0e1117").move_to(r)
                 if l.width > r.width - 0.05: l.scale_to_fit_width(r.width - 0.08)
                 g.add(VGroup(r, l))
             return g, x
-        limit = DashedLine([-6.0 + 4.2, -0.55, 0], [-6.0 + 4.2, -2.55, 0], color=C_Q)
+
+        self.begin("seq")
+        self.title("Worked example 1 · no streaming (each stage waits)")
+        self.play(diag.animate.scale(0.55).move_to([0, 1.6, 0]), run_time=1.0)
+        limit = DashedLine([-6.0 + 4.2, 0.0, 0], [-6.0 + 4.2, -0.9, 0], color=C_Q)
         ll = T("1 s", 20, C_Q).next_to(limit, UP, buff=0.05)
-        slow, xe = bars([("net", 100, MUTED), ("STT final", 300, C_NEW), ("LLM full answer", 1400, C_APP), ("TTS full", 600, C_OLD), ("net", 100, MUTED)], -1.2)
+        slow, xe = bars([("net", 100, MUTED), ("STT final", 300, C_STT), ("LLM full answer", 1400, C_APP), ("TTS full", 600, C_TTS), ("net", 100, MUTED)], -0.45)
         self.play(Create(limit), FadeIn(ll), run_time=0.6)
-        self.play(LaggedStart(*[FadeIn(b, shift=RIGHT * 0.2) for b in slow], lag_ratio=0.5), run_time=2.2)
-        tot = T("≈ 2.5 s of silence", 22, C_BAD).move_to([xe - 1.4, -1.85, 0])
-        self.play(FadeIn(tot), run_time=0.6)
-        self.say("Wait for each stage to finish and the caller hears 2.5 s of dead air", C_BAD)
-        self.end()
+        self.play(LaggedStart(*[FadeIn(b, shift=RIGHT * 0.2) for b in slow], lag_ratio=0.5), run_time=2.4)
+        eq1 = T("100 + 300 + 1,400 + 600 + 100 = 2,500 ms of silence", 22, C_BAD).move_to([0, -1.15, 0])
+        self.play(FadeIn(eq1), run_time=0.8)
+        self.say("Wait for each stage to finish: the silences add up to 2.5 s", C_BAD)
+        self.end(2.0)
 
         self.begin("stream")
-        self.title("Latency budget: streaming")
-        fast, xe2 = bars([("net", 100, MUTED), ("STT", 200, C_NEW), ("LLM 1st sentence", 350, C_APP), ("TTS 1st audio", 150, C_OLD), ("net", 100, MUTED)], -2.2)
-        self.play(LaggedStart(*[FadeIn(b, shift=RIGHT * 0.2) for b in fast], lag_ratio=0.5), run_time=2.0)
-        t2 = T("≈ 0.9 s ✓", 22, C_GOOD).next_to(fast, RIGHT, buff=0.4)
-        self.play(FadeIn(t2), run_time=0.6)
-        self.say("Stream every stage: speak the first sentence while the LLM is still writing the rest")
-        self.end()
+        self.title("Worked example 2 · streaming (only the first piece counts)")
+        fast, xe2 = bars([("net", 100, MUTED), ("STT", 200, C_STT), ("LLM 1st sentence", 350, C_APP), ("TTS 1st audio", 150, C_TTS), ("net", 100, MUTED)], -1.85)
+        limit2 = DashedLine([-6.0 + 4.2, -1.4, 0], [-6.0 + 4.2, -2.3, 0], color=C_Q)
+        self.play(Create(limit2), run_time=0.4)
+        self.play(LaggedStart(*[FadeIn(b, shift=RIGHT * 0.2) for b in fast], lag_ratio=0.5), run_time=2.2)
+        eq2 = T("100 + 200 + 350 + 150 + 100 = 900 ms  ✓ under 1 s", 22, C_GOOD).move_to([0, -2.55, 0])
+        self.play(FadeIn(eq2), run_time=0.8)
+        self.say("Same models; the rest of the answer is generated while the first sentence plays")
+        self.end(2.0)
+
+        self.begin("tool")
+        self.play(*[FadeOut(m) for m in [slow, fast, eq1, eq2, limit, limit2, ll]], run_time=0.6)
+        self.title("Worked example 3 (edge case) · a 1.2 s PMS lookup")
+        x0 = -6.0; S2 = 4.6 / 1000
+        def seg(t0, t1, y, c, lab):
+            r = Rectangle(width=(t1 - t0) * S2, height=0.48, stroke_width=1, stroke_color="#0e1117", fill_color=c, fill_opacity=0.85)
+            r.move_to([x0 + (t0 + t1) / 2 * S2, y, 0])
+            l = T(lab, 14, "#0e1117").move_to(r)
+            if l.width > r.width - 0.05: l.scale_to_fit_width(r.width - 0.08)
+            return VGroup(r, l)
+        rowA = T("agent", 17, MUTED).move_to([x0 - 0.5, 0.0, 0]); rowC = T("caller", 17, MUTED).move_to([x0 - 0.5, -0.75, 0])
+        agent = VGroup(seg(0, 100, 0, MUTED, "net"), seg(100, 300, 0, C_STT, "STT"), seg(300, 600, 0, C_APP, "LLM →tool"),
+                       seg(600, 1800, 0, C_TOOL, "PMS lookup 1,200"), seg(1800, 2150, 0, C_APP, "LLM"), seg(2150, 2300, 0, C_TTS, "TTS"), seg(2300, 2400, 0, MUTED, "net"))
+        tick = VGroup(*[T(f"{t/1000:g} s", 14, MUTED).move_to([x0 + t * S2, -1.2, 0]) for t in (0, 1000, 2000)])
+        self.play(FadeIn(rowA), FadeIn(rowC), FadeIn(tick), run_time=0.5)
+        self.play(LaggedStart(*[FadeIn(s) for s in agent], lag_ratio=0.4), run_time=2.4)
+        e = lines([("Tool call starts at 100 + 200 + 300 = 600 ms", FG, 21),
+                   ("Answer audio at 600 + 1,200 + 350 + 150 + 100 = 2,400 ms  →  2.4 s of silence", C_BAD, 21),
+                   ("Filler (pre-recorded “Let me check that”, 1.5 s) at 600 + 100 = 700 ms", C_TTS, 21),
+                   ("Silence left: 700 ms before it + (2,400 − 2,200) = 200 ms after it", C_GOOD, 21)], -1.55)
+        self.play(FadeIn(e[0]), run_time=0.7); self.wait(0.6)
+        silent = seg(0, 2400, -0.75, "#3a2030", "silence 2,400 ms")
+        self.play(FadeIn(silent), FadeIn(e[1]), run_time=0.9); self.wait(0.9)
+        filler = seg(700, 2200, -0.75, C_TTS, "filler 1.5 s"); ans = seg(2400, 2700, -0.75, C_GOOD, "answer")
+        self.play(FadeIn(filler), FadeIn(ans), FadeIn(e[2]), run_time=0.9); self.wait(0.8)
+        self.play(FadeIn(e[3]), run_time=0.8)
+        self.say("Tool calls blow the budget; speak a filler line while the PMS answers")
+        self.end(2.0)
+
+        self.begin("faded")
+        self.play(*[FadeOut(m) for m in [rowA, rowC, tick, agent, silent, filler, ans, e]], run_time=0.6)
+        self.title("Your turn · streaming, different vendors")
+        e4 = lines([("net 80  +  STT 250  +  LLM 1st sentence 400  +  TTS 1st audio 200  +  net 80", FG, 23),
+                    ("1. 80 + 250 + 400 = 730 ms", C_STT, 24),
+                    ("2. 730 + 200 + 80 = ?   Under 1 s or not?", C_GOOD, 26)], -0.2, buff=0.35)
+        for l in e4:
+            self.play(FadeIn(l, shift=UP * 0.1), run_time=0.8); self.wait(0.6)
+        self.play(Create(SurroundingRectangle(e4[2], color=C_GOOD, buff=0.14)), run_time=0.7)
+        self.say("Pause here: finish the sum on paper, then check it beside the video")
+        self.end(2.0)
 
         self.begin("bargein")
-        self.play(*[FadeOut(m) for m in [slow, fast, tot, t2, limit, ll]], run_time=0.6)
-        self.play(diag.animate.scale(1 / 0.62).move_to([0, 0.05, 0]), run_time=0.9)
+        self.play(*[FadeOut(m) for m in self.mobjects if m not in (diag, self.ttl, self.cap)], run_time=0.6)
+        self.play(diag.animate.scale(1 / 0.55).move_to([0, 0.05, 0]), run_time=0.9)
         self.title("Barge-in and turn detection")
-        sp = T("TTS: \"Your next opening is Monday at 9…\"", 20, C_OLD).next_to(tts, LEFT, buff=0.35)
+        sp = T("TTS: \"Your next opening is Monday at 9…\"", 20, C_TTS).next_to(tts, LEFT, buff=0.35)
         self.play(FadeIn(sp), run_time=0.7)
         cut = T("Caller: \"Wait, Tuesday!\"", 22, C_APP).next_to(caller, DOWN, buff=0.35)
         self.play(FadeIn(cut, shift=UP * 0.1), run_time=0.6)
@@ -314,7 +473,9 @@ class Voice(StepScene):
         self.say("Control and cost vs operating burden: same shape as the DB migration")
         self.end(2.2)
 
-# ------------------------------------------------------------ Chapter 4
+# ------------------------------------------------------------ Chapter 5: PMS writes, counted
+X_ = "✗"; W_ = "⚠"; OK_ = "✓"
+OUT = {X_: ("failed before writing", MUTED), W_: ("wrote, reply lost", C_Q), OK_: ("wrote, reply OK", C_GOOD)}
 class PMS(StepScene):
     def construct(self):
         agent = box("Voice agent", C_APP, w=2.8, h=1.0, fs=24).move_to([-4.6, 1.0, 0])
@@ -349,8 +510,67 @@ class PMS(StepScene):
         self.say("Attach a unique key to every write; a repeat with the same key changes nothing")
         self.end()
 
-        self.begin("tenant")
+        def legend():
+            g = VGroup(*[VGroup(T(k, 26, OUT[k][1]), T(OUT[k][0], 20, OUT[k][1])).arrange(RIGHT, buff=0.15) for k in (X_, W_, OK_)]).arrange(RIGHT, buff=0.7)
+            return g.move_to([0, 2.45, 0])
+        def attempts(seq, y=1.3):
+            g = VGroup(*[box(f"try {i+1}  {s}", OUT[s][1], w=2.3, h=0.75, fs=22) for i, s in enumerate(seq)]).arrange(RIGHT, buff=0.35)
+            return g.move_to([0, y, 0])
+
+        self.begin("count")
         self.play(*[FadeOut(m) for m in [agent, pms, a, al, cal[0], cal[1], key, same]], run_time=0.6)
+        self.title("Counting appointments, attempt by attempt")
+        lg = legend()
+        self.play(LaggedStart(*[FadeIn(x) for x in lg], lag_ratio=0.5), run_time=1.8); self.wait(0.6)
+        r = lines([("No key:   appointments = number of tries that WROTE (⚠ or ✓)", C_BAD, 24),
+                   ("With key: appointments = 1 if any try wrote (PMS returns the first one)", C_GOOD, 24),
+                   ("The agent keeps retrying until ✓ or it runs out of tries", MUTED, 21)], 1.2, buff=0.35)
+        for l in r:
+            self.play(FadeIn(l, shift=UP * 0.1), run_time=0.8); self.wait(0.6)
+        self.say("Only tries that reached the PMS write can create an appointment")
+        self.end(2.0)
+
+        self.begin("ex1")
+        self.play(FadeOut(r), run_time=0.5)
+        self.title("Worked example 1 · ⚠ then ✓")
+        at = attempts([W_, OK_])
+        self.play(LaggedStart(*[FadeIn(x) for x in at], lag_ratio=0.5), run_time=1.4); self.wait(0.5)
+        e = lines([("No key:   try 1 wrote (1) + try 2 wrote (1) = 2 appointments  ✗ double-booked", C_BAD, 23),
+                   ("With key: try 2 sends call-8812-book-1 again → PMS returns try 1's booking", C_GOOD, 23),
+                   ("               = 1 appointment  ✓", C_GOOD, 23)], 0.2, buff=0.3)
+        for l in e:
+            self.play(FadeIn(l, shift=UP * 0.1), run_time=0.8); self.wait(0.7)
+        self.say("A lost reply is the whole danger: the write happened, the agent doesn't know")
+        self.end(2.0)
+
+        self.begin("ex2")
+        self.play(FadeOut(at), FadeOut(e), run_time=0.5)
+        self.title("Worked example 2 (edge cases) · ⚠ ⚠ ⚠ and ✗ ✗ ✓")
+        at2 = attempts([W_, W_, W_])
+        self.play(LaggedStart(*[FadeIn(x) for x in at2], lag_ratio=0.5), run_time=1.5); self.wait(0.5)
+        e2 = lines([("No key:   1 + 1 + 1 = 3 appointments, and the agent tells the caller it FAILED", C_BAD, 22),
+                    ("With key: 1 appointment. Before saying “failed”, look up the key → it's booked", C_GOOD, 22),
+                    ("✗ ✗ ✓:   0 + 0 + 1 = 1 either way: retries are harmless if nothing was written", MUTED, 22)], 0.2, buff=0.32)
+        for l in e2:
+            self.play(FadeIn(l, shift=UP * 0.1), run_time=0.8); self.wait(0.7)
+        self.say("Out of tries ≠ not booked. Check the key before telling the caller", C_Q)
+        self.end(2.0)
+
+        self.begin("faded")
+        self.play(FadeOut(at2), FadeOut(e2), run_time=0.5)
+        self.title("Your turn · ✗ then ⚠ then ✓")
+        at3 = attempts([X_, W_, OK_])
+        self.play(LaggedStart(*[FadeIn(x) for x in at3], lag_ratio=0.5), run_time=1.5); self.wait(0.5)
+        e3 = lines([("No key:   0 + 1 + 1 = 2 appointments", C_BAD, 24),
+                    ("With key: ?", C_GOOD, 26)], 0.2, buff=0.35)
+        self.play(FadeIn(e3[0]), run_time=0.8); self.wait(0.7)
+        self.play(FadeIn(e3[1]), run_time=0.8)
+        self.play(Create(SurroundingRectangle(e3[1], color=C_GOOD, buff=0.14)), run_time=0.7)
+        self.say("Pause here: count the with-key case, then check it beside the video")
+        self.end(2.0)
+
+        self.begin("tenant")
+        self.play(*[FadeOut(m) for m in self.mobjects if m not in (self.ttl, self.cap)], run_time=0.6)
         self.title("Multi-tenant isolation")
         ca = box("Paws Vet", C_OLD, w=4.2, h=2.4, fs=26, sub="PMS creds · hours · rules").move_to([-3.3, 0.1, 0])
         cb = box("Smile Dental", C_NEW, w=4.2, h=2.4, fs=26, sub="PMS creds · hours · rules").move_to([3.3, 0.1, 0])

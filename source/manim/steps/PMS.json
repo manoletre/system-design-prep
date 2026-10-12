@@ -1,5 +1,5 @@
 {
- "duration": 30.5,
+ "duration": 71.1,
  "steps": [
   {
    "key": "retry",
@@ -14,15 +14,39 @@
    "hold": 1.8
   },
   {
-   "key": "tenant",
+   "key": "count",
    "start": 17.1,
-   "end": 23.2,
+   "end": 27.8,
+   "hold": 2.0
+  },
+  {
+   "key": "ex1",
+   "start": 27.8,
+   "end": 38.2,
+   "hold": 2.0
+  },
+  {
+   "key": "ex2",
+   "start": 38.2,
+   "end": 48.7,
+   "hold": 2.0
+  },
+  {
+   "key": "faded",
+   "start": 48.7,
+   "end": 57.7,
+   "hold": 2.0
+  },
+  {
+   "key": "tenant",
+   "start": 57.7,
+   "end": 63.8,
    "hold": 1.8
   },
   {
    "key": "fallback",
-   "start": 23.2,
-   "end": 30.5,
+   "start": 63.8,
+   "end": 71.1,
    "hold": 2.2
   }
  ]
